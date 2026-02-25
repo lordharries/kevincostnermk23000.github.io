@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KC-MK2-3000 // THE PODCAST NOBODY ASKED FOR</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* =============================================
+   ROOT
+============================================= */
+:root {
+  --amber:      #ffb000;
+  --amber-dim:  #7a5500;
+  --amber-dark: #3a2800;
+  --amber-glow: rgba(255,176,0,0.18);
+  --amber-hot:  #ffd060;
+  --bg:         #0a0800;
+  --screen-bg:  #060500;
+  --panel:      #0e0c08;
+  --border:     #2a2010;
+  --rust:       #5a3010;
+  --rust-light: #8a4820;
+  --green-warn: #50ff50;
+  --red-warn:   #ff3020;
+  --dead:       #1a1208;
+  --crack:      rgba(255,176,0,0.06);
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  width:100%; min-height:100%;
+  background: var(--bg);
+  color: var(--amber);
+  font-family: 'Share Tech Mono', monospace;
+  overflow-x: hidden;
+}
+
+/* noise grain overlay */
+body::before {
+  content:'';
+  position:fixed; inset:0; z-index:9999; pointer-events:none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.55;
+}
+
+/* global scanlines */
+body::after {
+  content:'';
+  position:fixed; inset:0; z-index:9998; pointer-events:none;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.13) 2px, rgba(0,0,0,0.13) 4px
+  );
+}
+
+/* =============================================
+   BOOT SCREEN
+============================================= */
+#boot-screen {
+  position:fixed; inset:0; z-index:5000;
+  background: var(--bg);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:40px;
+}
+
+.boot-logo {
+  font-family:'VT323', monospace;
+  font-size: clamp(28px,6vw,52px);
+  color: var(--amber);
+  text-shadow: 0 0 20px rgba(255,176,0,0.6);
+  letter-spacing:4px;
+  text-align:center;
+  margin-bottom:6px;
+}
+.boot-sub {
+  font-size:11px; color:var(--amber-dim); letter-spacing:5px; margin-bottom:40px; text-align:center;
+}
+.boot-log {
+  width:100%; max-width:560px;
+  font-size: clamp(11px,2vw,13px); color:var(--amber-dim);
+  line-height:2;
+}
+.boot-line { overflow:hidden; white-space:nowrap; width:0; }
+.boot-line.show { animation: type-in 0.3s steps(40,end) forwards; }
+@keyframes type-in { to { width:100%; } }
+
+.boot-bar-wrap {
+  margin-top:24px; width:100%; max-width:560px;
+}
+.boot-bar-label { font-size:11px; color:var(--amber-dim); margin-bottom:6px; letter-spacing:3px; }
+.boot-bar-outer {
+  height:14px; background:var(--dead);
+  border:1px solid var(--amber-dark); position:relative; overflow:hidden;
+}
+.boot-bar-inner {
+  height:100%; width:0%; background:var(--amber-dim);
+  box-shadow:0 0 8px rgba(255,176,0,0.4);
+  transition:width 0.08s linear;
+}
+.boot-bar-inner::after {
+  content:'';
+  position:absolute; top:0; right:0; bottom:0; width:6px;
+  background: var(--amber-hot);
+  box-shadow:0 0 12px var(--amber);
+}
+
+/* =============================================
+   MAIN APP (hidden until boot done)
+============================================= */
+#app {
+  display:none;
+  min-height:100vh;
+  padding:0;
+  position:relative;
+}
+
+/* =============================================
+   CRT VIGNETTE
+============================================= */
+#app::before {
+  content:'';
+  position:fixed; inset:0; z-index:9997; pointer-events:none;
+  background: radial-gradient(ellipse at 50% 50%, transparent 55%, rgba(0,0,0,0.75) 100%);
+}
+
+/* =============================================
+   STATIC FLICKER CANVAS
+============================================= */
+#static-canvas {
+  position:fixed; inset:0; z-index:9996; pointer-events:none; opacity:0.03;
+}
+
+/* =============================================
+   OUTER TERMINAL FRAME
+============================================= */
+.terminal-wrap {
+  max-width:680px; margin:0 auto;
+  padding:20px 16px 60px;
+  position:relative; z-index:10;
+}
+
+/* ROBCO header plate */
+.header-plate {
+  background:
+    linear-gradient(180deg, #1e1a0e 0%, var(--panel) 100%);
+  border:2px solid var(--border);
+  border-bottom:none;
+  padding:14px 20px 12px;
+  position:relative;
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px;
+}
+
+.header-plate::before {
+  content:'';
+  position:absolute; bottom:0; left:20px; right:20px; height:1px;
+  background:linear-gradient(90deg,transparent,var(--amber-dim),transparent);
+}
+
+.robco-badge {
+  display:flex; flex-direction:column;
+}
+.robco-name {
+  font-family:'VT323',monospace;
+  font-size:clamp(22px,5vw,34px);
+  color:var(--amber);
+  text-shadow:0 0 15px rgba(255,176,0,0.5);
+  letter-spacing:3px;
+  line-height:1;
+}
+.robco-sub {
+  font-size:9px; color:var(--amber-dim); letter-spacing:4px;
+}
+
+.header-status {
+  text-align:right;
+  display:flex; flex-direction:column; gap:4px; align-items:flex-end;
+}
+.status-pill {
+  font-size:9px; letter-spacing:3px;
+  padding:2px 8px; border:1px solid var(--amber-dark);
+  color:var(--amber-dim);
+}
+.status-pill.ok { border-color:var(--green-warn); color:var(--green-warn); text-shadow:0 0 6px rgba(80,255,80,0.5); }
+.status-pill.warn { border-color:var(--red-warn); color:var(--red-warn); text-shadow:0 0 6px rgba(255,48,32,0.5); animation:blink-pill 1.5s step-end infinite; }
+@keyframes blink-pill { 50%{opacity:0.3} }
+
+/* radiation symbol */
+.rad-symbol {
+  font-size:28px; opacity:0.25; filter:drop-shadow(0 0 4px var(--amber));
+  animation:rad-spin 8s linear infinite;
+}
+@keyframes rad-spin { to{transform:rotate(360deg)} }
+
+/* =============================================
+   MAIN SCREEN
+============================================= */
+.screen-frame {
+  background:var(--screen-bg);
+  border:2px solid var(--border);
+  border-top:none;
+  position:relative;
+  overflow:hidden;
+  box-shadow:
+    inset 0 0 60px rgba(0,0,0,0.9),
+    inset 0 0 20px rgba(255,176,0,0.04),
+    0 0 30px rgba(255,176,0,0.05);
+}
+
+/* cracked glass effect */
+.screen-frame::after {
+  content:'';
+  position:absolute; inset:0; pointer-events:none; z-index:20;
+  background:
+    linear-gradient(127deg, transparent 0%, transparent 48%, rgba(255,176,0,0.08) 49%, transparent 50%),
+    linear-gradient(43deg,  transparent 0%, transparent 62%, rgba(255,176,0,0.05) 63%, transparent 64%);
+}
+
+/* =============================================
+   SCREEN SECTIONS
+============================================= */
+.screen-inner {
+  padding:20px 22px;
+  position:relative; z-index:5;
+}
+
+/* Top info bar */
+.info-bar {
+  display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid var(--border);
+  padding-bottom:10px; margin-bottom:16px;
+  font-size:10px; color:var(--amber-dim); letter-spacing:3px;
+}
+.info-bar .blink { animation:blink-pill 0.9s step-end infinite; color:var(--amber); }
+
+/* MAIN DISPLAY AREA */
+.display-zone {
+  min-height:180px;
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:flex-start;
+  margin-bottom:20px;
+  position:relative;
+}
+
+/* prompt cursor line */
+.prompt-area {
+  font-family:'VT323',monospace;
+  font-size:clamp(13px,3vw,17px);
+  color:var(--amber-dim);
+  line-height:1.9;
+  width:100%;
+}
+.prompt-line { display:flex; align-items:baseline; gap:6px; }
+.prompt-gt { color:var(--amber); }
+.cursor-block {
+  display:inline-block; width:10px; height:1.1em;
+  background:var(--amber);
+  animation:cur-blink 1s step-end infinite;
+  vertical-align:bottom;
+}
+@keyframes cur-blink { 50%{opacity:0} }
+
+/* IDLE big text */
+.idle-display {
+  width:100%;
+}
+.idle-title {
+  font-family:'VT323',monospace;
+  font-size:clamp(32px,8vw,58px);
+  color:var(--amber);
+  text-shadow:0 0 20px rgba(255,176,0,0.5);
+  line-height:1; letter-spacing:2px;
+  margin-bottom:8px;
+}
+.idle-desc {
+  font-size:11px; color:var(--amber-dim); letter-spacing:3px; line-height:2;
+}
+.idle-desc .hl { color:var(--amber); }
+
+/* ROLLING display */
+.rolling-display { display:none; width:100%; }
+.roll-header {
+  font-size:10px; color:var(--amber-dim); letter-spacing:5px; margin-bottom:10px;
+}
+.roll-num {
+  font-family:'VT323',monospace;
+  font-size:clamp(50px,14vw,90px);
+  color:var(--amber);
+  text-shadow:0 0 30px rgba(255,176,0,0.7);
+  line-height:0.9;
+  letter-spacing:4px;
+}
+.roll-topic {
+  font-family:'VT323',monospace;
+  font-size:clamp(18px,4.5vw,28px);
+  color:var(--amber-dim);
+  margin-top:6px;
+  min-height:1.4em;
+}
+
+/* RESULT display */
+.result-display { display:none; width:100%; }
+
+.result-header {
+  font-size:9px; color:var(--amber-dim); letter-spacing:5px;
+  margin-bottom:14px; display:flex; align-items:center; gap:10px;
+}
+.result-header::after {
+  content:''; flex:1; height:1px;
+  background:linear-gradient(90deg,var(--amber-dark),transparent);
+}
+
+.result-num {
+  font-family:'VT323',monospace;
+  font-size:clamp(60px,16vw,100px);
+  color:var(--amber-hot);
+  text-shadow:0 0 30px rgba(255,176,0,0.9), 0 0 60px rgba(255,176,0,0.4);
+  line-height:0.85;
+  margin-bottom:10px;
+  animation:result-pulse 2s ease-in-out infinite;
+}
+@keyframes result-pulse {
+  0%,100%{text-shadow:0 0 30px rgba(255,176,0,0.9),0 0 60px rgba(255,176,0,0.4)}
+  50%    {text-shadow:0 0 50px rgba(255,208,96,1),0 0 100px rgba(255,176,0,0.6)}
+}
+
+.result-topic {
+  font-family:'VT323',monospace;
+  font-size:clamp(22px,5.5vw,36px);
+  color:var(--amber-hot);
+  text-shadow:0 0 12px rgba(255,176,0,0.6);
+  line-height:1.25;
+  margin-bottom:12px;
+  animation:decode-in 0.5s ease;
+}
+@keyframes decode-in {
+  from{opacity:0;letter-spacing:8px;filter:blur(4px)}
+  to  {opacity:1;letter-spacing:normal;filter:blur(0)}
+}
+
+.result-meta {
+  display:flex; gap:20px; flex-wrap:wrap;
+}
+.result-field {
+  display:flex; flex-direction:column; gap:2px;
+}
+.result-field-label {
+  font-size:9px; color:var(--amber-dark); letter-spacing:4px;
+}
+.result-field-val {
+  font-size:clamp(12px,3vw,16px); color:var(--amber); letter-spacing:2px;
+}
+
+/* =============================================
+   PROGRESS / LOADING BAR
+============================================= */
+.load-bar-wrap {
+  margin:12px 0;
+  display:none;
+}
+.load-bar-label {
+  font-size:9px; color:var(--amber-dim); letter-spacing:4px; margin-bottom:4px;
+  display:flex; justify-content:space-between;
+}
+.load-bar-outer {
+  height:8px; background:var(--dead);
+  border:1px solid var(--amber-dark); overflow:hidden; position:relative;
+}
+.load-bar-fill {
+  height:100%; width:0%; background:var(--amber-dim);
+  transition:width 0.06s linear;
+  position:relative;
+}
+.load-bar-fill::after {
+  content:'';
+  position:absolute; top:0; right:0; bottom:0; width:8px;
+  background:var(--amber-hot);
+  box-shadow:0 0 10px var(--amber);
+}
+
+/* =============================================
+   DIVIDER
+============================================= */
+.screen-divider {
+  border:none;
+  border-top:1px solid var(--border);
+  margin:16px 0;
+  position:relative;
+}
+.screen-divider::before {
+  content:'// ';  color:var(--amber-dark);
+  position:absolute; top:-8px; left:0;
+  font-size:10px; background:var(--screen-bg); padding:0 6px;
+  letter-spacing:2px;
+}
+
+/* =============================================
+   STATS PANEL
+============================================= */
+.stats-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:16px;
+}
+.stat-cell {
+  background:var(--dead);
+  border:1px solid var(--border);
+  padding:8px 10px;
+}
+.stat-cell-label {
+  font-size:8px; color:var(--amber-dark); letter-spacing:3px; margin-bottom:4px;
+}
+.stat-cell-val {
+  font-family:'VT323',monospace;
+  font-size:clamp(18px,4.5vw,26px); color:var(--amber);
+  text-shadow:0 0 8px rgba(255,176,0,0.4);
+  line-height:1;
+}
+
+/* =============================================
+   TOPIC TICKER
+============================================= */
+.ticker-zone {
+  border:1px solid var(--border);
+  background:var(--dead);
+  overflow:hidden; position:relative;
+  height:24px; margin-bottom:16px;
+}
+.ticker-zone::before, .ticker-zone::after {
+  content:''; position:absolute; top:0; bottom:0; width:40px; z-index:2; pointer-events:none;
+}
+.ticker-zone::before { left:0; background:linear-gradient(90deg,var(--dead),transparent); }
+.ticker-zone::after  { right:0; background:linear-gradient(-90deg,var(--dead),transparent); }
+.ticker-text {
+  white-space:nowrap; display:inline-block;
+  font-size:11px; color:var(--amber-dim);
+  animation:ticker-run 50s linear infinite;
+  line-height:24px; letter-spacing:2px;
+}
+@keyframes ticker-run {
+  from{transform:translateX(100vw)} to{transform:translateX(-100%)}
+}
+
+/* =============================================
+   HISTORY LOG
+============================================= */
+.log-zone {
+  border:1px solid var(--border);
+  background:var(--dead);
+  padding:10px 14px;
+  max-height:100px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:var(--amber-dark) transparent;
+  margin-bottom:18px;
+}
+.log-zone-header {
+  font-size:9px; color:var(--amber-dark); letter-spacing:4px; margin-bottom:8px;
+}
+.log-entry {
+  font-size:11px; color:var(--amber-dim);
+  padding:2px 0;
+  border-bottom:1px solid rgba(42,32,16,0.5);
+  display:flex; gap:8px;
+}
+.log-entry:last-child{border-bottom:none;}
+.log-entry.new { color:var(--amber); }
+.log-num { color:var(--amber-dark); flex-shrink:0; }
+.log-topic { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* =============================================
+   ACTIVATE BUTTON
+============================================= */
+.activate-wrap {
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+
+.activate-btn {
+  width:100%;
+  padding:16px 20px;
+  background: var(--dead);
+  border:2px solid var(--amber-dim);
+  cursor:pointer;
+  font-family:'VT323',monospace;
+  font-size:clamp(20px,5vw,28px);
+  color:var(--amber);
+  letter-spacing:6px;
+  text-shadow:0 0 10px rgba(255,176,0,0.5);
+  position:relative; overflow:hidden;
+  transition:all 0.12s;
+  box-shadow:
+    0 0 0 1px var(--bg),
+    inset 0 0 20px rgba(255,176,0,0.03);
+}
+
+.activate-btn::before {
+  content:'';
+  position:absolute; top:0; left:-100%; width:60%; height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,176,0,0.07),transparent);
+  transform:skewX(-20deg);
+  animation:btn-sheen 5s ease-in-out infinite;
+}
+@keyframes btn-sheen { 0%{left:-100%} 50%,100%{left:200%} }
+
+.activate-btn:hover {
+  background:#141008;
+  border-color:var(--amber);
+  text-shadow:0 0 20px rgba(255,176,0,0.9), 0 0 40px rgba(255,176,0,0.4);
+  box-shadow:0 0 0 1px var(--bg), 0 0 25px rgba(255,176,0,0.15), inset 0 0 20px rgba(255,176,0,0.06);
+  transform:none;
+}
+.activate-btn:active, .activate-btn.pressed {
+  background:#0a0800;
+  border-color:var(--amber-dim);
+  box-shadow:0 0 0 1px var(--bg), inset 0 0 30px rgba(0,0,0,0.8);
+}
+.activate-btn:disabled { opacity:0.3; cursor:not-allowed; }
+
+.btn-hint {
+  font-size:10px; color:var(--amber-dark); letter-spacing:4px;
+}
+
+/* =============================================
+   BOTTOM PLATE
+============================================= */
+.bottom-plate {
+  background:var(--panel);
+  border:2px solid var(--border);
+  border-top:none;
+  padding:8px 20px;
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:9px; color:var(--amber-dark); letter-spacing:2px;
+}
+
+/* hazard stripes on bottom */
+.hazard-stripe {
+  height:8px; overflow:hidden;
+  background:repeating-linear-gradient(
+    -45deg,
+    var(--amber-dark) 0px, var(--amber-dark) 8px,
+    var(--dead) 8px, var(--dead) 16px
+  );
+  border:1px solid var(--border); border-top:none;
+  opacity:0.6;
+}
+
+/* =============================================
+   SCREEN DAMAGE / GLITCH
+============================================= */
+.glitch-overlay {
+  position:fixed; inset:0; pointer-events:none; z-index:9995;
+  opacity:0;
+}
+.glitch-overlay.active {
+  animation:glitch-burst 0.6s ease-out forwards;
+}
+@keyframes glitch-burst {
+  0%  { opacity:0; }
+  5%  { opacity:1; background:linear-gradient(transparent 0%,rgba(255,176,0,0.04) 50%,transparent 100%); transform:translateX(-3px); }
+  10% { transform:translateX(3px); }
+  15% { transform:translateX(0); opacity:0.5; }
+  20% { opacity:0; }
+  60% { opacity:0; }
+  65% { opacity:0.3; background:repeating-linear-gradient(0deg,transparent,transparent 4px,rgba(255,176,0,0.03) 4px,rgba(255,176,0,0.03) 5px); transform:skewX(-1deg); }
+  70% { transform:skewX(0); opacity:0; }
+  100%{ opacity:0; }
+}
+
+/* =============================================
+   WARNING FLASH
+============================================= */
+#warn-flash {
+  position:fixed; inset:0; pointer-events:none; z-index:9994;
+  background:rgba(255,176,0,0.06);
+  opacity:0;
+}
+#warn-flash.flash { animation:w-flash 0.5s ease-out forwards; }
+@keyframes w-flash { 0%{opacity:0} 20%{opacity:1} 100%{opacity:0} }
+
+/* =============================================
+   RESPONSIVE
+============================================= */
+@media(max-width:480px){
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .result-meta{flex-direction:column; gap:8px;}
+}
+</style>
+</head>
+<body>
+
+<!-- WARN FLASH -->
+<div id="warn-flash"></div>
+<div class="glitch-overlay" id="glitch"></div>
+<canvas id="static-canvas"></canvas>
+
+<!-- =============================================
+   BOOT SCREEN
+============================================= -->
+<div id="boot-screen">
+  <div class="boot-logo">THE PODCAST NOBODY ASKED FOR<br>UNIFIED OPERATING SYSTEM</div>
+  <div class="boot-sub">COPYRIGHT 2024-2077 THE PODCAST NOBODY ASKED FOR // ALL RIGHTS RESERVED</div>
+  <div class="boot-log" id="boot-log"></div>
+  <div class="boot-bar-wrap" id="boot-bar-wrap" style="display:none">
+    <div class="boot-bar-label">LOADING KEVIN COSTNER MK II 3000 FIRMWARE...</div>
+    <div class="boot-bar-outer"><div class="boot-bar-inner" id="boot-bar"></div></div>
+  </div>
+</div>
+
+<!-- =============================================
+   MAIN APP
+============================================= -->
+<div id="app">
+  <div class="terminal-wrap">
+
+    <!-- HEADER PLATE -->
+    <div class="header-plate">
+      <div class="robco-badge">
+        <div class="robco-name">KC-MK2-3000</div>
+        <div class="robco-sub">THE PODCAST NOBODY ASKED FOR // PATREON TOPIC SELECTION UNIT // BUILD 207.7</div>
+      </div>
+      <div class="header-status">
+        <div class="status-pill ok">SYS: NOMINAL</div>
+        <div class="status-pill warn">RAD: ELEVATED</div>
+        <div class="status-pill">UNIT: ONLINE</div>
+      </div>
+      <div class="rad-symbol">☢</div>
+    </div>
+
+    <!-- MAIN SCREEN -->
+    <div class="screen-frame">
+      <div class="screen-inner">
+
+        <!-- INFO BAR -->
+        <div class="info-bar">
+          <span>KEVIN COSTNER MK II 3000 // PATREON TOPIC SELECTION PROTOCOL v7.7</span>
+          <span class="blink" id="clock-display">00:00:00</span>
+        </div>
+
+        <!-- DISPLAY ZONE -->
+        <div class="display-zone">
+
+          <!-- IDLE -->
+          <div class="idle-display" id="d-idle">
+            <div class="idle-title">SELECT TOPIC?</div>
+            <div class="idle-desc">
+              <span class="hl">&gt;</span> UNIT DESIGNATION: KEVIN COSTNER MK II 3000<br>
+              <span class="hl">&gt;</span> DATABASE LOADED: <span class="hl" id="db-count">66</span> TOPICS INDEXED<br>
+              <span class="hl">&gt;</span> STATUS: AWAITING USER INPUT<br>
+              <span class="hl">&gt;</span> PRESS <span class="hl">[INITIATE]</span> TO BEGIN SELECTION<br>
+              <span class="hl">&gt;</span> <span class="cursor-block"></span>
+            </div>
+          </div>
+
+          <!-- ROLLING -->
+          <div class="rolling-display" id="d-rolling">
+            <div class="roll-header">// SCANNING DATABASE //</div>
+            <div class="roll-num" id="roll-n">--</div>
+            <div class="roll-topic" id="roll-t">SEARCHING...</div>
+          </div>
+
+          <!-- RESULT -->
+          <div class="result-display" id="d-result">
+            <div class="result-header">SELECTION COMPLETE</div>
+            <div class="result-num" id="res-n">00</div>
+            <div class="result-topic" id="res-t">—</div>
+            <div class="result-meta">
+              <div class="result-field">
+                <div class="result-field-label">SUBMITTED BY</div>
+                <div class="result-field-val" id="res-p">—</div>
+              </div>
+              <div class="result-field">
+                <div class="result-field-label">TOPIC INDEX</div>
+                <div class="result-field-val" id="res-idx">—</div>
+              </div>
+              <div class="result-field">
+                <div class="result-field-label">UNIT STATUS</div>
+                <div class="result-field-val" style="color:var(--green-warn);text-shadow:0 0 6px rgba(80,255,80,0.5)">NOMINAL</div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /display-zone -->
+
+        <!-- LOADING BAR -->
+        <div class="load-bar-wrap" id="load-bar-wrap">
+          <div class="load-bar-label">
+            <span>RANDOMISATION ENGINE</span>
+            <span id="load-pct">0%</span>
+          </div>
+          <div class="load-bar-outer">
+            <div class="load-bar-fill" id="load-fill"></div>
+          </div>
+        </div>
+
+        <hr class="screen-divider">
+
+        <!-- STATS -->
+        <div class="stats-grid">
+          <div class="stat-cell">
+            <div class="stat-cell-label">TOPICS LOADED</div>
+            <div class="stat-cell-val" id="s-total">66</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-cell-label">SELECTIONS</div>
+            <div class="stat-cell-val" id="s-count">0</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-cell-label">LAST TOPIC</div>
+            <div class="stat-cell-val" id="s-last">N/A</div>
+          </div>
+        </div>
+
+        <!-- TOPIC TICKER -->
+        <div class="ticker-zone">
+          <div class="ticker-text" id="ticker-txt"></div>
+        </div>
+
+        <!-- HISTORY LOG -->
+        <div class="log-zone">
+          <div class="log-zone-header">// SELECTION LOG //</div>
+          <div id="log-entries">
+            <div class="log-entry" style="opacity:0.4">&gt; NO ENTRIES. AWAITING FIRST SELECTION.</div>
+          </div>
+        </div>
+
+        <!-- ACTIVATE -->
+        <div class="activate-wrap">
+          <button class="activate-btn" id="act-btn" onclick="activate()">
+            [ INITIATE SELECTION ]
+          </button>
+          <div class="btn-hint">SPACE / ENTER / CLICK TO ACTIVATE</div>
+        </div>
+
+      </div><!-- /screen-inner -->
+    </div><!-- /screen-frame -->
+
+    <!-- BOTTOM PLATE -->
+    <div class="bottom-plate">
+      <span>THE PODCAST NOBODY ASKED FOR // KC-MK2-3000</span>
+      <span>S/N: TPNAF-7743-KC2 // PATREON CERTIFIED</span>
+    </div>
+    <div class="hazard-stripe"></div>
+
+  </div><!-- /terminal-wrap -->
+</div><!-- /app -->
+
+<script>
+// ── TOPICS ──────────────────────────────────────
+const topics = [
+  {num:1,  topic:"Talking Animals",                                     picker:"Graham"},
+  {num:2,  topic:"Adult Swim Characters",                               picker:"Graham"},
+  {num:3,  topic:"The Wire Characters",                                 picker:"Graham"},
+  {num:4,  topic:"The Rock Characters (Dwayne, not the Nic Cage movie)",picker:"Graham"},
+  {num:5,  topic:"Graphic Novels",                                      picker:"Graham"},
+  {num:6,  topic:"Action Heroes",                                       picker:"Ian"},
+  {num:7,  topic:"Animated Characters",                                 picker:"Ian"},
+  {num:8,  topic:"Goriest Movies",                                      picker:"Ian"},
+  {num:9,  topic:"Best Fight Scenes",                                   picker:"Ian"},
+  {num:10, topic:"Movies From Our List of Recommended Movies",          picker:"Graham"},
+  {num:11, topic:"Teen Comedies",                                       picker:"Ian"},
+  {num:12, topic:"Best Picture Non-Winners (Nominees)",                 picker:"Ian"},
+  {num:13, topic:"Movie Release Years",                                 picker:"Graham"},
+  {num:14, topic:"TV Finales",                                          picker:"Ian"},
+  {num:15, topic:"Muppets",                                             picker:"Dan P"},
+  {num:16, topic:"Ians and Grahams in Cinema",                         picker:"Dan P"},
+  {num:17, topic:"Vampire Slayers",                                     picker:"Dan P"},
+  {num:18, topic:"South Park Episodes",                                 picker:"Ian"},
+  {num:19, topic:"Movie Weapons",                                       picker:"Ian"},
+  {num:20, topic:"Movie Musical Part 2",                                picker:"Ian"},
+  {num:21, topic:"Will Ferrell Movies",                                 picker:"Ian"},
+  {num:22, topic:"TV Theme Tunes",                                      picker:"Alun"},
+  {num:23, topic:"Romantic Comedies",                                   picker:"Ian"},
+  {num:24, topic:"Jason Stathamses",                                    picker:"Neil"},
+  {num:25, topic:"Documentaries",                                       picker:"Ian"},
+  {num:26, topic:"Best 80s Action Movie Poster",                        picker:"John"},
+  {num:27, topic:"Films That Ruin A Teacher's Life By Ignoring Facts",  picker:"Neil"},
+  {num:28, topic:"Explosions",                                          picker:"Dan P"},
+  {num:29, topic:"Studio Ghibli Films",                                 picker:"Dan P"},
+  {num:30, topic:"Best TV Episodes: Part 2",                            picker:"Ian"},
+  {num:31, topic:"Time Machines",                                       picker:"Ian"},
+  {num:32, topic:"Movie Studios",                                       picker:"Graham"},
+  {num:33, topic:"Indie Movies Part 2",                                 picker:"Graham"},
+  {num:34, topic:"Movie Scores",                                        picker:"Alun"},
+  {num:35, topic:"Movie Franchises",                                    picker:"Graham"},
+  {num:36, topic:"Weirdest Films",                                      picker:"Ian"},
+  {num:37, topic:"Gods In Film and TV",                                 picker:"Ian"},
+  {num:38, topic:"Christopher Leeses",                                  picker:"Neil"},
+  {num:39, topic:"Movie Soundtracks",                                   picker:"John"},
+  {num:40, topic:"TV Shows With The Best Music",                        picker:"Ian"},
+  {num:41, topic:"Minor Sitcom Characters",                             picker:"Graham"},
+  {num:42, topic:"Movie Theatre Snacks",                                picker:"Graham"},
+  {num:43, topic:"Stupid Action Films",                                 picker:"Ian"},
+  {num:44, topic:"Guilty Pleasures",                                    picker:"Ian"},
+  {num:45, topic:"One Word Movie Titles",                               picker:"Ian"},
+  {num:46, topic:"Sports Movies",                                       picker:"Ian"},
+  {num:47, topic:"Directional Debuts",                                  picker:"Ian"},
+  {num:48, topic:"Disaster Movies",                                     picker:"Ian"},
+  {num:49, topic:"Movies With Numbers In The Title",                    picker:"Ian"},
+  {num:50, topic:"Movies With Names in the Title",                      picker:"Ian"},
+  {num:51, topic:"Movies Based on Games",                               picker:"Ian"},
+  {num:52, topic:"Movies Based on Books",                               picker:"Ian"},
+  {num:53, topic:"Movies Based on True Stories",                        picker:"Ian"},
+  {num:54, topic:"Minor TV Characters",                                 picker:"Ian"},
+  {num:55, topic:"Aircraft Movies",                                     picker:"Ryan"},
+  {num:56, topic:"Giant Animal Movies",                                 picker:"Ryan"},
+  {num:57, topic:"Movies About Musicians",                              picker:"Ryan"},
+  {num:58, topic:"American Sitcoms",                                    picker:"Ian"},
+  {num:59, topic:"Prison Movies",                                       picker:"Ian"},
+  {num:60, topic:"Movies Set In A Jungle",                              picker:"Ian"},
+  {num:61, topic:"Movies Set In The UK",                                picker:"Ian"},
+  {num:62, topic:"Heist Movies",                                        picker:"Ian"},
+  {num:63, topic:"Fictional Sports Teams",                              picker:"Ian"},
+  {num:64, topic:"Courtroom Dramas",                                    picker:"Ian"},
+  {num:65, topic:"Voices",                                              picker:"Ian"},
+  {num:66, topic:"Porn Parody Names Of Classic Movies",                 picker:"Scott K"},
+];
+
+// ── STATIC CANVAS ────────────────────────────────
+const sc = document.getElementById('static-canvas');
+const sctx = sc.getContext('2d');
+function resizeSC() { sc.width=window.innerWidth; sc.height=window.innerHeight; }
+resizeSC(); window.addEventListener('resize',resizeSC);
+function drawStatic() {
+  const id = sctx.createImageData(sc.width,sc.height);
+  const d = id.data;
+  for(let i=0;i<d.length;i+=4){
+    const v = Math.random()>0.97 ? Math.floor(Math.random()*80) : 0;
+    d[i]=v+80; d[i+1]=v+40; d[i+2]=0; d[i+3]=v;
+  }
+  sctx.putImageData(id,0,0);
+}
+setInterval(drawStatic,120);
+
+// ── CLOCK ────────────────────────────────────────
+setInterval(()=>{
+  const n=new Date();
+  document.getElementById('clock-display').textContent=
+    [n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+},1000);
+
+// ── TICKER ───────────────────────────────────────
+const tStr = topics.map(t=>`[${String(t.num).padStart(2,'0')}] ${t.topic.toUpperCase()}`).join('   //   ');
+document.getElementById('ticker-txt').textContent = tStr + '   //   ' + tStr;
+document.getElementById('db-count').textContent = topics.length;
+document.getElementById('s-total').textContent  = topics.length;
+
+// ── BOOT SEQUENCE ────────────────────────────────
+const bootLines = [
+  "THE PODCAST NOBODY ASKED FOR (TM) TERMLINK PROTOCOL",
+  "ENTER PASSWORD NOW",
+  "> BYPASS ACCEPTED // PATREON SUBSCRIBER OVERRIDE",
+  "BOOTING KEVIN COSTNER MK II 3000...",
+  "LOADING PATREON TOPIC DATABASE... [66 ENTRIES FOUND]",
+  "RANDOMISATION ENGINE: ONLINE",
+  "KEVIN COSTNER PERSONALITY MODULE: LOADED",
+  "CHECKING FOR WATER WORLD REFERENCES... 0 FOUND. GOOD.",
+  "PODCAST INTEGRITY CHECK: NOMINAL",
+  "RAD SCRUBBERS: 34% EFFICIENCY // GOOD ENOUGH",
+  "SYSTEM CHECK COMPLETE. 2 WARNINGS. NOBODY CARES.",
+  "> WELCOME TO THE PODCAST NOBODY ASKED FOR",
+  "> KEVIN COSTNER MK II 3000 IS READY",
+];
+
+async function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function runBoot(){
+  const log = document.getElementById('boot-log');
+  for(let i=0;i<bootLines.length;i++){
+    const el = document.createElement('div');
+    el.className='boot-line';
+    el.textContent = bootLines[i];
+    log.appendChild(el);
+    await sleep(30);
+    el.classList.add('show');
+    await sleep(220);
+  }
+  await sleep(200);
+  document.getElementById('boot-bar-wrap').style.display='block';
+  const bar = document.getElementById('boot-bar');
+  let pct=0;
+  await new Promise(r=>{
+    const t=setInterval(()=>{
+      pct+=2+Math.random()*4;
+      if(pct>=100){pct=100;clearInterval(t);setTimeout(r,200);}
+      bar.style.width=pct+'%';
+    },40);
+  });
+  // Fade out boot screen
+  document.getElementById('boot-screen').style.transition='opacity 0.6s';
+  document.getElementById('boot-screen').style.opacity='0';
+  await sleep(600);
+  document.getElementById('boot-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+}
+runBoot();
+
+// ── STATE ────────────────────────────────────────
+let running=false, count=0, history=[];
+
+function showState(s){
+  document.getElementById('d-idle').style.display    = s==='idle'    ?'block':'none';
+  document.getElementById('d-rolling').style.display = s==='rolling' ?'block':'none';
+  document.getElementById('d-result').style.display  = s==='result'  ?'block':'none';
+  document.getElementById('load-bar-wrap').style.display = s==='rolling'?'block':'none';
+}
+
+// ── ACTIVATE ─────────────────────────────────────
+function activate(){
+  if(running) return;
+  running=true;
+
+  const btn = document.getElementById('act-btn');
+  btn.disabled=true;
+  btn.classList.add('pressed');
+  setTimeout(()=>btn.classList.remove('pressed'),150);
+
+  // Glitch on activation
+  const gl = document.getElementById('glitch');
+  gl.classList.add('active');
+  setTimeout(()=>gl.classList.remove('active'),700);
+
+  showState('rolling');
+
+  const chosen = topics[Math.floor(Math.random()*topics.length)];
+  const rn = document.getElementById('roll-n');
+  const rt = document.getElementById('roll-t');
+  const fill = document.getElementById('load-fill');
+  const pct = document.getElementById('load-pct');
+
+  let elapsed=0;
+  const total=900;
+  const step=50;
+
+  const timer = setInterval(()=>{
+    elapsed+=step;
+    const r = topics[Math.floor(Math.random()*topics.length)];
+    rn.textContent = String(r.num).padStart(2,'0');
+    rt.textContent = r.topic.toUpperCase();
+    const p = Math.min(100,Math.round((elapsed/total)*100));
+    fill.style.width=p+'%';
+    pct.textContent=p+'%';
+  },step);
+
+  setTimeout(()=>{
+    clearInterval(timer);
+    fill.style.width='100%'; pct.textContent='100%';
+
+    // Warn flash on result
+    const wf=document.getElementById('warn-flash');
+    wf.classList.add('flash');
+    setTimeout(()=>wf.classList.remove('flash'),600);
+
+    // Show result
+    document.getElementById('res-n').textContent   = String(chosen.num).padStart(2,'0');
+    document.getElementById('res-t').textContent   = chosen.topic.toUpperCase();
+    document.getElementById('res-p').textContent   = chosen.picker.toUpperCase();
+    document.getElementById('res-idx').textContent = `${chosen.num} / ${topics.length}`;
+    showState('result');
+
+    // Stats
+    count++;
+    document.getElementById('s-count').textContent = count;
+    document.getElementById('s-last').textContent  = `#${chosen.num}`;
+
+    // Log
+    history.unshift(chosen);
+    if(history.length>15) history.pop();
+    document.getElementById('log-entries').innerHTML = history.map((h,i)=>
+      `<div class="log-entry ${i===0?'new':''}">
+        <span class="log-num">&gt; [${String(h.num).padStart(2,'0')}]</span>
+        <span class="log-topic">${h.topic.toUpperCase()} // ${h.picker.toUpperCase()}</span>
+      </div>`
+    ).join('');
+
+    setTimeout(()=>{
+      running=false;
+      btn.disabled=false;
+      btn.textContent='[ INITIATE SELECTION ]';
+    },800);
+  },total);
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key===' '||e.key==='Enter'){e.preventDefault();activate();}
+});
+</script>
+</body>
+</html>
