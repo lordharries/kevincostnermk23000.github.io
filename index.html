@@ -748,75 +748,11 @@ body::after {
 </div><!-- /app -->
 
 <script>
-// ── TOPICS ──────────────────────────────────────
-const topics = [
-  {num:1,  topic:"Talking Animals",                                     picker:"Graham"},
-  {num:2,  topic:"Adult Swim Characters",                               picker:"Graham"},
-  {num:3,  topic:"The Wire Characters",                                 picker:"Graham"},
-  {num:4,  topic:"The Rock Characters (Dwayne, not the Nic Cage movie)",picker:"Graham"},
-  {num:5,  topic:"Graphic Novels",                                      picker:"Graham"},
-  {num:6,  topic:"Action Heroes",                                       picker:"Ian"},
-  {num:7,  topic:"Animated Characters",                                 picker:"Ian"},
-  {num:8,  topic:"Goriest Movies",                                      picker:"Ian"},
-  {num:9,  topic:"Best Fight Scenes",                                   picker:"Ian"},
-  {num:10, topic:"Movies From Our List of Recommended Movies",          picker:"Graham"},
-  {num:11, topic:"Teen Comedies",                                       picker:"Ian"},
-  {num:12, topic:"Best Picture Non-Winners (Nominees)",                 picker:"Ian"},
-  {num:13, topic:"Movie Release Years",                                 picker:"Graham"},
-  {num:14, topic:"TV Finales",                                          picker:"Ian"},
-  {num:15, topic:"Muppets",                                             picker:"Dan P"},
-  {num:16, topic:"Ians and Grahams in Cinema",                         picker:"Dan P"},
-  {num:17, topic:"Vampire Slayers",                                     picker:"Dan P"},
-  {num:18, topic:"South Park Episodes",                                 picker:"Ian"},
-  {num:19, topic:"Movie Weapons",                                       picker:"Ian"},
-  {num:20, topic:"Movie Musical Part 2",                                picker:"Ian"},
-  {num:21, topic:"Will Ferrell Movies",                                 picker:"Ian"},
-  {num:22, topic:"TV Theme Tunes",                                      picker:"Alun"},
-  {num:23, topic:"Romantic Comedies",                                   picker:"Ian"},
-  {num:24, topic:"Jason Stathamses",                                    picker:"Neil"},
-  {num:25, topic:"Documentaries",                                       picker:"Ian"},
-  {num:26, topic:"Best 80s Action Movie Poster",                        picker:"John"},
-  {num:27, topic:"Films That Ruin A Teacher's Life By Ignoring Facts",  picker:"Neil"},
-  {num:28, topic:"Explosions",                                          picker:"Dan P"},
-  {num:29, topic:"Studio Ghibli Films",                                 picker:"Dan P"},
-  {num:30, topic:"Best TV Episodes: Part 2",                            picker:"Ian"},
-  {num:31, topic:"Time Machines",                                       picker:"Ian"},
-  {num:32, topic:"Movie Studios",                                       picker:"Graham"},
-  {num:33, topic:"Indie Movies Part 2",                                 picker:"Graham"},
-  {num:34, topic:"Movie Scores",                                        picker:"Alun"},
-  {num:35, topic:"Movie Franchises",                                    picker:"Graham"},
-  {num:36, topic:"Weirdest Films",                                      picker:"Ian"},
-  {num:37, topic:"Gods In Film and TV",                                 picker:"Ian"},
-  {num:38, topic:"Christopher Leeses",                                  picker:"Neil"},
-  {num:39, topic:"Movie Soundtracks",                                   picker:"John"},
-  {num:40, topic:"TV Shows With The Best Music",                        picker:"Ian"},
-  {num:41, topic:"Minor Sitcom Characters",                             picker:"Graham"},
-  {num:42, topic:"Movie Theatre Snacks",                                picker:"Graham"},
-  {num:43, topic:"Stupid Action Films",                                 picker:"Ian"},
-  {num:44, topic:"Guilty Pleasures",                                    picker:"Ian"},
-  {num:45, topic:"One Word Movie Titles",                               picker:"Ian"},
-  {num:46, topic:"Sports Movies",                                       picker:"Ian"},
-  {num:47, topic:"Directional Debuts",                                  picker:"Ian"},
-  {num:48, topic:"Disaster Movies",                                     picker:"Ian"},
-  {num:49, topic:"Movies With Numbers In The Title",                    picker:"Ian"},
-  {num:50, topic:"Movies With Names in the Title",                      picker:"Ian"},
-  {num:51, topic:"Movies Based on Games",                               picker:"Ian"},
-  {num:52, topic:"Movies Based on Books",                               picker:"Ian"},
-  {num:53, topic:"Movies Based on True Stories",                        picker:"Ian"},
-  {num:54, topic:"Minor TV Characters",                                 picker:"Ian"},
-  {num:55, topic:"Aircraft Movies",                                     picker:"Ryan"},
-  {num:56, topic:"Giant Animal Movies",                                 picker:"Ryan"},
-  {num:57, topic:"Movies About Musicians",                              picker:"Ryan"},
-  {num:58, topic:"American Sitcoms",                                    picker:"Ian"},
-  {num:59, topic:"Prison Movies",                                       picker:"Ian"},
-  {num:60, topic:"Movies Set In A Jungle",                              picker:"Ian"},
-  {num:61, topic:"Movies Set In The UK",                                picker:"Ian"},
-  {num:62, topic:"Heist Movies",                                        picker:"Ian"},
-  {num:63, topic:"Fictional Sports Teams",                              picker:"Ian"},
-  {num:64, topic:"Courtroom Dramas",                                    picker:"Ian"},
-  {num:65, topic:"Voices",                                              picker:"Ian"},
-  {num:66, topic:"Porn Parody Names Of Classic Movies",                 picker:"Scott K"},
-];
+// ── CONFIG ──────────────────────────────────────
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxPVeWWlhPZ83BX1X7Y1u_pPg9E0dtBi8AdRG85KVB8wIOfJ5fH8fR1RmfqercSyhLk/exec";
+
+// ── TOPICS (populated from sheet) ───────────────
+let topics = [];
 
 // ── STATIC CANVAS ────────────────────────────────
 const sc = document.getElementById('static-canvas');
@@ -841,19 +777,13 @@ setInterval(()=>{
     [n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
 },1000);
 
-// ── TICKER ───────────────────────────────────────
-const tStr = topics.map(t=>`[${String(t.num).padStart(2,'0')}] ${t.topic.toUpperCase()}`).join('   //   ');
-document.getElementById('ticker-txt').textContent = tStr + '   //   ' + tStr;
-document.getElementById('db-count').textContent = topics.length;
-document.getElementById('s-total').textContent  = topics.length;
-
 // ── BOOT SEQUENCE ────────────────────────────────
 const bootLines = [
   "THE PODCAST NOBODY ASKED FOR (TM) TERMLINK PROTOCOL",
   "ENTER PASSWORD NOW",
   "> BYPASS ACCEPTED // PATREON SUBSCRIBER OVERRIDE",
   "BOOTING KEVIN COSTNER MK II 3000...",
-  "LOADING PATREON TOPIC DATABASE... [66 ENTRIES FOUND]",
+  "CONNECTING TO TOPIC DATABASE...",
   "RANDOMISATION ENGINE: ONLINE",
   "KEVIN COSTNER PERSONALITY MODULE: LOADED",
   "CHECKING FOR WATER WORLD REFERENCES... 0 FOUND. GOOD.",
@@ -866,17 +796,65 @@ const bootLines = [
 
 async function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
+function initUI() {
+  const tStr = topics.map(t=>`[${String(t.num).padStart(2,'0')}] ${t.topic.toUpperCase()}`).join('   //   ');
+  document.getElementById('ticker-txt').textContent = tStr + '   //   ' + tStr;
+  document.getElementById('db-count').textContent = topics.length;
+  document.getElementById('s-total').textContent  = topics.length;
+}
+
 async function runBoot(){
   const log = document.getElementById('boot-log');
-  for(let i=0;i<bootLines.length;i++){
+
+  // Print first 4 lines, then fetch, then rest
+  const preLines  = bootLines.slice(0, 4);
+  const postLines = bootLines.slice(4);
+
+  for(let i=0;i<preLines.length;i++){
     const el = document.createElement('div');
     el.className='boot-line';
-    el.textContent = bootLines[i];
+    el.textContent = preLines[i];
     log.appendChild(el);
     await sleep(30);
     el.classList.add('show');
     await sleep(220);
   }
+
+  // Fetch topics from sheet
+  let fetchLine = document.createElement('div');
+  fetchLine.className='boot-line show';
+  fetchLine.textContent = 'FETCHING TOPIC DATABASE FROM REMOTE SERVER...';
+  log.appendChild(fetchLine);
+
+  try {
+    const res = await fetch(APPS_SCRIPT_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    topics = data.map(row => ({
+      num:    Number(row.num),
+      topic:  String(row.topic),
+      picker: String(row.picker || '')
+    })).filter(t => t.topic);
+
+    fetchLine.textContent = `TOPIC DATABASE LOADED... [${topics.length} ENTRIES FOUND]`;
+  } catch(e) {
+    fetchLine.textContent = 'WARNING: DATABASE FETCH FAILED. RUNNING IN DEGRADED MODE.';
+    fetchLine.style.color = 'var(--red-warn)';
+    // Graceful degraded state — topics stays empty, UI will show 0
+  }
+
+  initUI();
+
+  for(let i=0;i<postLines.length;i++){
+    const el = document.createElement('div');
+    el.className='boot-line';
+    el.textContent = postLines[i];
+    log.appendChild(el);
+    await sleep(30);
+    el.classList.add('show');
+    await sleep(220);
+  }
+
   await sleep(200);
   document.getElementById('boot-bar-wrap').style.display='block';
   const bar = document.getElementById('boot-bar');
